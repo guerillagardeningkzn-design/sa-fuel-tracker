@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>SA Fuel Price Tracker — MD Works</title>
+  <meta name="description" content="Monthly South African fuel price tracker. 95 ULP, 93 ULP and Diesel — inland and coastal."/>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' fill='%23110e09'/><text x='16' y='22' text-anchor='middle' font-size='18' fill='%23c9943c' font-family='serif'>✦</text></svg>"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;900&family=Cormorant+Garamond:ital,wght@1,300&family=Raleway:wght@200;300;400;500&family=Syne+Mono&display=swap" rel="stylesheet"/>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+  <link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+
+  <!-- Grain + glow are in CSS -->
+
+  <!-- Cursor -->
+  <div id="cursor-dot"  aria-hidden="true"></div>
+  <div id="cursor-ring" aria-hidden="true"></div>
+
+  <!-- Nav -->
+  <nav class="site-nav">
+    <div class="container nav-inner">
+      <a href="/" class="nav-brand">
+        <span class="ornament">✦</span>
+        <span>MD Works</span>
+      </a>
+      <span class="nav-title">SA Fuel Price Tracker</span>
+    </div>
+  </nav>
+
+  <!-- Main -->
+  <main class="container">
+
+    <!-- Header -->
+    <header class="page-header">
+      <p class="section-label">Project 02 · Live Data Dashboard</p>
+      <h1 class="page-title">
+        <span class="gold-text">SA Fuel</span><br/>
+        <span class="outlined-text">Prices</span>
+      </h1>
+      <p class="page-sub">
+        Monthly retail prices published by the Department of Mineral Resources &amp; Energy.
+        Inland and coastal rates for petrol and diesel.
+      </p>
+      <div class="meta-row">
+        <span class="meta-chip" id="last-updated">Loading...</span>
+        <span class="meta-chip" id="next-review">Next review: 1st Wed of next month</span>
+        <span class="meta-chip" id="data-source-chip">Data: local JSON</span>
+      </div>
+    </header>
+
+    <!-- Loading state -->
+    <div id="loading" class="loading-state">
+      <div class="spinner"></div>
+      <p>Fetching prices…</p>
+    </div>
+
+    <!-- Error state -->
+    <div id="error" class="error-state hidden">
+      <span class="error-icon">⚠</span>
+      <p id="error-msg">Could not load data.</p>
+    </div>
+
+    <!-- Dashboard (hidden until loaded) -->
+    <div id="dashboard" class="hidden">
+
+      <!-- Current price cards -->
+      <section class="cards-section">
+        <p class="section-label reveal">Current Prices · <span id="current-month-label">—</span></p>
+        <div class="price-grid">
+
+          <div class="price-card card reveal" data-fuel="p95i">
+            <div class="fuel-header">
+              <div>
+                <div class="fuel-grade">95 ULP</div>
+                <div class="fuel-region">Inland</div>
+              </div>
+              <div class="fuel-icon">⛽</div>
+            </div>
+            <div class="fuel-price" id="price-p95i">—</div>
+            <div class="fuel-change" id="change-p95i"></div>
+            <div class="fuel-note">per litre · incl. levies &amp; taxes</div>
+          </div>
+
+          <div class="price-card card reveal" data-fuel="p95c">
+            <div class="fuel-header">
+              <div>
+                <div class="fuel-grade">95 ULP</div>
+                <div class="fuel-region">Coastal</div>
+              </div>
+              <div class="fuel-icon">⛽</div>
+            </div>
+            <div class="fuel-price" id="price-p95c">—</div>
+            <div class="fuel-change" id="change-p95c"></div>
+            <div class="fuel-note">per litre · incl. levies &amp; taxes</div>
+          </div>
+
+          <div class="price-card card reveal" data-fuel="p93i">
+            <div class="fuel-header">
+              <div>
+                <div class="fuel-grade">93 ULP</div>
+                <div class="fuel-region">Inland only</div>
+              </div>
+              <div class="fuel-icon">⛽</div>
+            </div>
+            <div class="fuel-price" id="price-p93i">—</div>
+            <div class="fuel-change" id="change-p93i"></div>
+            <div class="fuel-note">per litre · incl. levies &amp; taxes</div>
+          </div>
+
+          <div class="price-card card reveal" data-fuel="d005i">
+            <div class="fuel-header">
+              <div>
+                <div class="fuel-grade">Diesel 0.05%</div>
+                <div class="fuel-region">Inland</div>
+              </div>
+              <div class="fuel-icon">🚛</div>
+            </div>
+            <div class="fuel-price" id="price-d005i">—</div>
+            <div class="fuel-change" id="change-d005i"></div>
+            <div class="fuel-note">per litre · 0.05% sulphur</div>
+          </div>
+
+          <div class="price-card card reveal" data-fuel="d005c">
+            <div class="fuel-header">
+              <div>
+                <div class="fuel-grade">Diesel 0.05%</div>
+                <div class="fuel-region">Coastal</div>
+              </div>
+              <div class="fuel-icon">🚛</div>
+            </div>
+            <div class="fuel-price" id="price-d005c">—</div>
+            <div class="fuel-change" id="change-d005c"></div>
+            <div class="fuel-note">per litre · 0.05% sulphur</div>
+          </div>
+
+        </div>
+      </section>
+
+      <div class="full-divider"></div>
+
+      <!-- Chart -->
+      <section class="chart-section reveal">
+        <div class="chart-header">
+          <p class="section-label">12-Month History</p>
+          <div class="chart-toggle" role="group" aria-label="Select fuel type">
+            <button class="toggle-btn active" data-series="p95i">95 Inland</button>
+            <button class="toggle-btn" data-series="p95c">95 Coastal</button>
+            <button class="toggle-btn" data-series="p93i">93 Inland</button>
+            <button class="toggle-btn" data-series="d005i">Diesel Inland</button>
+          </div>
+        </div>
+        <div class="chart-wrap card">
+          <canvas id="priceChart" height="320"></canvas>
+        </div>
+        <p class="chart-caption">
+          Price per litre in ZAR · Source: DMRE monthly gazette
+        </p>
+      </section>
+
+      <div class="full-divider"></div>
+
+      <!-- History table -->
+      <section class="table-section reveal">
+        <p class="section-label">Full Price History</p>
+        <div class="table-wrap card">
+          <table id="price-table">
+            <thead>
+              <tr>
+                <th>Month</th>
+                <th>95 Inland</th>
+                <th>95 Coastal</th>
+                <th>93 Inland</th>
+                <th>Diesel Inland</th>
+                <th>Diesel Coastal</th>
+              </tr>
+            </thead>
+            <tbody id="table-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+    </div><!-- /dashboard -->
+
+    <!-- Google Sheets info panel -->
+    <section class="sheets-panel card reveal">
+      <div class="sheets-inner">
+        <div class="sheets-text">
+          <p class="section-label" style="margin-bottom:.75rem">Live Data via Google Sheets</p>
+          <h3 class="sheets-title">Connect your own Sheet</h3>
+          <p>
+            Replace the local JSON with a published Google Sheet CSV and this dashboard
+            updates live whenever you edit the sheet — no redeploy needed.
+          </p>
+          <p>
+            See <code>README.md</code> for the exact column format and how to get your
+            Sheet's public CSV URL.
+          </p>
+        </div>
+        <div class="sheets-code">
+          <div class="code-label mono">main.js · line 8</div>
+          <pre><code><span class="c">// Option A: local JSON (default)</span>
+const DATA_URL = './data/prices.json';
+
+<span class="c">// Option B: Google Sheet (published CSV)</span>
+<span class="c">// const DATA_URL = 'https://docs.google.com/spreadsheets/</span>
+<span class="c">//   d/YOUR_SHEET_ID/export?format=csv';</span></code></pre>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="site-footer">
+    <div class="full-divider"></div>
+    <div class="footer-inner">
+      <div class="footer-brand">✦ &nbsp; MD Works &nbsp; ✦</div>
+      <div class="footer-sub">Morney Deetlefs · Project 02 — Live Data Dashboard · SA Fuel Price Tracker</div>
+    </div>
+  </footer>
+
+  <script src="main.js"></script>
+</body>
+</html>
