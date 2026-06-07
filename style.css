@@ -221,6 +221,28 @@ h1, h2, h3, h4 { font-family: 'Cinzel', serif; color: var(--md-gold-lt); line-he
 .toggle-btn.active { color: var(--md-gold-lt); border-color: var(--md-gold); background: rgba(201,148,60,.1); }
 
 .chart-wrap { padding: 1.5rem; }
+.chart-nav {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-top: .75rem; padding: 0 .25rem;
+}
+.chart-nav-btn {
+  font-family: 'Syne Mono', monospace;
+  font-size: .62rem; letter-spacing: .1em; text-transform: uppercase;
+  padding: .35rem .9rem;
+  background: var(--md-panel); border: 1px solid var(--md-border);
+  color: var(--md-muted); border-radius: var(--md-radius);
+  cursor: pointer; transition: all .2s;
+}
+.chart-nav-btn:hover:not(:disabled) {
+  color: var(--md-gold-lt); border-color: var(--md-gold-dk);
+}
+.chart-nav-btn:disabled {
+  opacity: .3; cursor: not-allowed;
+}
+.chart-range {
+  font-family: 'Syne Mono', monospace; font-size: .65rem;
+  letter-spacing: .12em; color: var(--md-gold-dk);
+}
 .chart-caption {
   font-family: 'Syne Mono', monospace; font-size: .58rem;
   letter-spacing: .12em; text-transform: uppercase; color: var(--md-faint);
@@ -250,7 +272,40 @@ tbody tr.current-row td:first-child::after {
 td { padding: .85rem 1.25rem; color: rgba(240,230,206,.7); font-weight: 300; }
 td:first-child { font-family: 'Syne Mono', monospace; font-size: .72rem; letter-spacing: .1em; color: var(--md-muted); }
 
+/* ── Sheets panel ─────────────────────── */
+.sheets-panel { margin: 4rem 0; padding: 0; }
+.sheets-inner {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 3rem;
+  align-items: start; padding: 2.5rem;
+}
+@media (max-width: 700px) { .sheets-inner { grid-template-columns: 1fr; gap: 2rem; } }
 
+.sheets-title {
+  font-size: 1.1rem; margin-bottom: .75rem;
+}
+.sheets-text p {
+  font-size: .87rem; font-weight: 300; color: rgba(240,230,206,.6);
+  line-height: 1.8; margin-bottom: .75rem;
+}
+.sheets-text code {
+  font-family: 'Syne Mono', monospace; font-size: .78rem;
+  background: var(--md-panel); border: 1px solid var(--md-border);
+  border-radius: 2px; padding: .1rem .4rem; color: var(--md-gold-lt);
+}
+
+.code-label {
+  font-size: .6rem; letter-spacing: .12em; text-transform: uppercase;
+  color: var(--md-gold-dk); margin-bottom: .5rem;
+}
+pre {
+  background: var(--md-black); border: 1px solid var(--md-border);
+  border-radius: var(--md-radius); padding: 1.25rem; overflow-x: auto;
+}
+pre code {
+  font-family: 'Syne Mono', monospace; font-size: .78rem;
+  line-height: 1.7; color: var(--md-cream);
+}
+.c { color: var(--md-faint); }
 
 /* ── Loading / Error ──────────────────── */
 .loading-state, .error-state {

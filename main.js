@@ -5,42 +5,33 @@
 
    DATA SOURCE
    ───────────
-   Option A (default): ./data/prices.json
-   Option B: Published Google Sheet CSV URL
+   Live from the SA Fuel Price API (Project 04)
+   https://sa-fuel-api-production.up.railway.app
 
-   To switch to Google Sheets:
-   1. In your Sheet, File → Share → Publish to web → CSV
-   2. Copy the URL
-   3. Replace DATA_URL below with that URL
-   4. Set IS_CSV = true
+   To update prices monthly, use the admin page:
+   /admin.html
 ══════════════════════════════════════════ */
 
-const DATA_URL = 'https://sa-fuel-api-production.up.railway.app/v1/prices?limit=29';
-const IS_CSV = false;
+const DATA_URL = 'https://sa-fuel-api-production.up.railway.app/v1/prices?limit=36';
+const IS_CSV   = false;
 
 // ── Column keys ───────────────────────── //
 const FUELS = [
-  { key: 'p95i', label: '95 ULP Inland' },
-  { key: 'p95c', label: '95 ULP Coastal' },
-  { key: 'p93i', label: '93 ULP Inland' },
-  { key: 'd005i', label: 'Diesel 0.05% Inland' },
+  { key: 'p95i',  label: '95 ULP Inland'    },
+  { key: 'p95c',  label: '95 ULP Coastal'   },
+  { key: 'p93i',  label: '93 ULP Inland'    },
+  { key: 'd005i', label: 'Diesel 0.05% Inland'  },
   { key: 'd005c', label: 'Diesel 0.05% Coastal' },
 ];
 
 // ── State ──────────────────────────────── //
-let priceData = [];
-let chart = null;
+let priceData    = [];
+let chart        = null;
 let activeSeries = 'p95i';
+let chartOffset  = 0;       // 0 = most recent window, 1 = one window back, etc.
+const WINDOW     = 12;      // months visible in chart at once
 
-// ── Boot ───────────────────────────────── //
-document.addEventListener('DOMContentLoaded', () => {
-  initCursor();
-  initScrollReveal();
-  loadData();
-  bindChartToggle();
-});
-
-// Map API response shape → flat shape the dashboard expects
+// ── Normalise API response → flat shape ── //
 function normalizeApiRow(row) {
   return {
     month: row.monthLabel,
@@ -52,16 +43,23 @@ function normalizeApiRow(row) {
   };
 }
 
+// ── Boot ───────────────────────────────── //
+document.addEventListener('DOMContentLoaded', () => {
+  initCursor();
+  initScrollReveal();
+  loadData();
+  bindChartToggle();
+  bindChartNav();
+});
+
 // ── Fetch data ─────────────────────────── //
 async function loadData() {
   try {
     const res  = await fetch(DATA_URL);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const raw  = await res.json();
+    const raw  = IS_CSV ? parseCSV(await res.text()) : await res.json();
     const rows = raw.data || raw;
-    priceData  = Array.isArray(rows)
-      ? rows.map(normalizeApiRow).reverse()
-      : rows;
+    priceData  = Array.isArray(rows) ? rows.map(normalizeApiRow).reverse() : rows;
     showDashboard(priceData);
     updateDataSourceChip('SA Fuel API');
   } catch (err) {
@@ -90,7 +88,7 @@ function showDashboard(data) {
   document.getElementById('loading').classList.add('hidden');
   document.getElementById('dashboard').classList.remove('hidden');
 
-  const current = data[data.length - 1];
+  const current  = data[data.length - 1];
   const previous = data[data.length - 2];
 
   // Header meta
@@ -102,9 +100,9 @@ function showDashboard(data) {
 
   // Price cards
   FUELS.forEach(fuel => {
-    const price = current[fuel.key];
-    const prev = previous ? previous[fuel.key] : null;
-    const diff = prev != null ? price - prev : null;
+    const price  = current[fuel.key];
+    const prev   = previous ? previous[fuel.key] : null;
+    const diff   = prev != null ? price - prev : null;
 
     document.getElementById(`price-${fuel.key}`).textContent =
       `R ${price.toFixed(2)}`;
@@ -132,16 +130,27 @@ function showDashboard(data) {
 
 // ── Chart ─────────────────────────────── //
 function buildChart(data, seriesKey) {
-  const last12 = data.slice(-12);
-  const labels = last12.map(d => d.month);
-  const values = last12.map(d => d[seriesKey]);
-  const label = FUELS.find(f => f.key === seriesKey)?.label ?? seriesKey;
+  // Calculate window based on offset
+  const end        = data.length - (chartOffset * WINDOW);
+  const start      = Math.max(0, end - WINDOW);
+  const windowData = data.slice(start, end);
+  const labels     = windowData.map(d => d.month);
+  const values     = windowData.map(d => d[seriesKey]);
+  const label      = FUELS.find(f => f.key === seriesKey)?.label ?? seriesKey;
+
+  // Update nav controls
+  const rangeEl = document.getElementById('chart-range');
+  if (rangeEl && windowData.length) {
+    rangeEl.textContent = `${windowData[0].month} — ${windowData[windowData.length - 1].month}`;
+  }
+  const btnPrev = document.getElementById('chart-prev');
+  const btnNext = document.getElementById('chart-next');
+  if (btnPrev) btnPrev.disabled = start <= 0;
+  if (btnNext) btnNext.disabled = chartOffset <= 0;
 
   const ctx = document.getElementById('priceChart').getContext('2d');
-
   if (chart) chart.destroy();
 
-  // Gradient fill
   const grad = ctx.createLinearGradient(0, 0, 0, 320);
   grad.addColorStop(0, 'rgba(201,148,60,.3)');
   grad.addColorStop(1, 'rgba(201,148,60,0)');
@@ -176,7 +185,7 @@ function buildChart(data, seriesKey) {
           titleColor: '#e8c87a',
           bodyColor: '#f0e6ce',
           titleFont: { family: 'Cinzel, serif', size: 12 },
-          bodyFont: { family: 'Syne Mono, monospace', size: 11 },
+          bodyFont:  { family: 'Syne Mono, monospace', size: 11 },
           callbacks: {
             label: ctx => ` R ${ctx.parsed.y.toFixed(2)} / litre`,
           }
@@ -184,12 +193,12 @@ function buildChart(data, seriesKey) {
       },
       scales: {
         x: {
-          grid: { color: 'rgba(61,53,38,.5)', drawBorder: false },
-          ticks: { color: '#7a6d58', font: { family: 'Syne Mono, monospace', size: 10 } },
+          grid:   { color: 'rgba(61,53,38,.5)', drawBorder: false },
+          ticks:  { color: '#7a6d58', font: { family: 'Syne Mono, monospace', size: 10 } },
         },
         y: {
-          grid: { color: 'rgba(61,53,38,.5)', drawBorder: false },
-          ticks: {
+          grid:   { color: 'rgba(61,53,38,.5)', drawBorder: false },
+          ticks:  {
             color: '#7a6d58',
             font: { family: 'Syne Mono, monospace', size: 10 },
             callback: v => `R${v.toFixed(0)}`,
@@ -202,7 +211,7 @@ function buildChart(data, seriesKey) {
 
 // ── Table ─────────────────────────────── //
 function buildTable(data) {
-  const tbody = document.getElementById('table-body');
+  const tbody   = document.getElementById('table-body');
   const current = data[data.length - 1].month;
 
   tbody.innerHTML = [...data].reverse().map(row => `
@@ -226,6 +235,17 @@ function bindChartToggle() {
       activeSeries = btn.dataset.series;
       if (priceData.length) buildChart(priceData, activeSeries);
     });
+  });
+}
+
+// ── Chart navigation ───────────────────── //
+function bindChartNav() {
+  document.getElementById('chart-prev')?.addEventListener('click', () => {
+    const maxOffset = Math.ceil(priceData.length / WINDOW) - 1;
+    if (chartOffset < maxOffset) { chartOffset++; buildChart(priceData, activeSeries); }
+  });
+  document.getElementById('chart-next')?.addEventListener('click', () => {
+    if (chartOffset > 0) { chartOffset--; buildChart(priceData, activeSeries); }
   });
 }
 
@@ -255,7 +275,7 @@ function initScrollReveal() {
 
 // ── Gold cursor ────────────────────────── //
 function initCursor() {
-  const dot = document.getElementById('cursor-dot');
+  const dot  = document.getElementById('cursor-dot');
   const ring = document.getElementById('cursor-ring');
   let mx = 0, my = 0, rx = 0, ry = 0;
 
@@ -266,7 +286,7 @@ function initCursor() {
   (function loop() {
     rx += (mx - rx) * .12;
     ry += (my - ry) * .12;
-    dot.style.left = mx + 'px'; dot.style.top = my + 'px';
+    dot.style.left  = mx + 'px'; dot.style.top  = my + 'px';
     ring.style.left = rx + 'px'; ring.style.top = ry + 'px';
     requestAnimationFrame(loop);
   })();
