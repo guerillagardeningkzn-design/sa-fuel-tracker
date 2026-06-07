@@ -15,21 +15,21 @@
    4. Set IS_CSV = true
 ══════════════════════════════════════════ */
 
-const DATA_URL = './data/prices.json';
-const IS_CSV   = false; // true when using Google Sheets CSV
+const DATA_URL = 'https://sa-fuel-api-production.up.railway.app/v1/prices?limit=29';
+const IS_CSV = false;
 
 // ── Column keys ───────────────────────── //
 const FUELS = [
-  { key: 'p95i',  label: '95 ULP Inland'    },
-  { key: 'p95c',  label: '95 ULP Coastal'   },
-  { key: 'p93i',  label: '93 ULP Inland'    },
-  { key: 'd005i', label: 'Diesel 0.05% Inland'  },
+  { key: 'p95i', label: '95 ULP Inland' },
+  { key: 'p95c', label: '95 ULP Coastal' },
+  { key: 'p93i', label: '93 ULP Inland' },
+  { key: 'd005i', label: 'Diesel 0.05% Inland' },
   { key: 'd005c', label: 'Diesel 0.05% Coastal' },
 ];
 
 // ── State ──────────────────────────────── //
-let priceData   = [];
-let chart       = null;
+let priceData = [];
+let chart = null;
 let activeSeries = 'p95i';
 
 // ── Boot ───────────────────────────────── //
@@ -40,18 +40,30 @@ document.addEventListener('DOMContentLoaded', () => {
   bindChartToggle();
 });
 
+// Map API response shape → flat shape the dashboard expects
+function normalizeApiRow(row) {
+  return {
+    month: row.monthLabel,
+    p95i:  row.prices.petrol.p95Inland,
+    p95c:  row.prices.petrol.p95Coastal,
+    p93i:  row.prices.petrol.p93Inland,
+    d005i: row.prices.diesel.d005Inland,
+    d005c: row.prices.diesel.d005Coastal,
+  };
+}
+
 // ── Fetch data ─────────────────────────── //
 async function loadData() {
   try {
-    const res = await fetch(DATA_URL);
+    const res  = await fetch(DATA_URL);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
-    const raw = IS_CSV ? parseCSV(await res.text()) : await res.json();
-    priceData = raw;
-
+    const raw  = await res.json();
+    const rows = raw.data || raw;
+    priceData  = Array.isArray(rows)
+      ? rows.map(normalizeApiRow).reverse()
+      : rows;
     showDashboard(priceData);
-    updateDataSourceChip(IS_CSV ? 'Google Sheets' : 'local JSON');
-
+    updateDataSourceChip('SA Fuel API');
   } catch (err) {
     showError(`Failed to load price data: ${err.message}`);
     console.error(err);
@@ -78,7 +90,7 @@ function showDashboard(data) {
   document.getElementById('loading').classList.add('hidden');
   document.getElementById('dashboard').classList.remove('hidden');
 
-  const current  = data[data.length - 1];
+  const current = data[data.length - 1];
   const previous = data[data.length - 2];
 
   // Header meta
@@ -90,9 +102,9 @@ function showDashboard(data) {
 
   // Price cards
   FUELS.forEach(fuel => {
-    const price  = current[fuel.key];
-    const prev   = previous ? previous[fuel.key] : null;
-    const diff   = prev != null ? price - prev : null;
+    const price = current[fuel.key];
+    const prev = previous ? previous[fuel.key] : null;
+    const diff = prev != null ? price - prev : null;
 
     document.getElementById(`price-${fuel.key}`).textContent =
       `R ${price.toFixed(2)}`;
@@ -120,10 +132,10 @@ function showDashboard(data) {
 
 // ── Chart ─────────────────────────────── //
 function buildChart(data, seriesKey) {
-  const last12  = data.slice(-12);
-  const labels  = last12.map(d => d.month);
-  const values  = last12.map(d => d[seriesKey]);
-  const label   = FUELS.find(f => f.key === seriesKey)?.label ?? seriesKey;
+  const last12 = data.slice(-12);
+  const labels = last12.map(d => d.month);
+  const values = last12.map(d => d[seriesKey]);
+  const label = FUELS.find(f => f.key === seriesKey)?.label ?? seriesKey;
 
   const ctx = document.getElementById('priceChart').getContext('2d');
 
@@ -131,8 +143,8 @@ function buildChart(data, seriesKey) {
 
   // Gradient fill
   const grad = ctx.createLinearGradient(0, 0, 0, 320);
-  grad.addColorStop(0,   'rgba(201,148,60,.3)');
-  grad.addColorStop(1,   'rgba(201,148,60,0)');
+  grad.addColorStop(0, 'rgba(201,148,60,.3)');
+  grad.addColorStop(1, 'rgba(201,148,60,0)');
 
   chart = new Chart(ctx, {
     type: 'line',
@@ -164,7 +176,7 @@ function buildChart(data, seriesKey) {
           titleColor: '#e8c87a',
           bodyColor: '#f0e6ce',
           titleFont: { family: 'Cinzel, serif', size: 12 },
-          bodyFont:  { family: 'Syne Mono, monospace', size: 11 },
+          bodyFont: { family: 'Syne Mono, monospace', size: 11 },
           callbacks: {
             label: ctx => ` R ${ctx.parsed.y.toFixed(2)} / litre`,
           }
@@ -172,12 +184,12 @@ function buildChart(data, seriesKey) {
       },
       scales: {
         x: {
-          grid:   { color: 'rgba(61,53,38,.5)', drawBorder: false },
-          ticks:  { color: '#7a6d58', font: { family: 'Syne Mono, monospace', size: 10 } },
+          grid: { color: 'rgba(61,53,38,.5)', drawBorder: false },
+          ticks: { color: '#7a6d58', font: { family: 'Syne Mono, monospace', size: 10 } },
         },
         y: {
-          grid:   { color: 'rgba(61,53,38,.5)', drawBorder: false },
-          ticks:  {
+          grid: { color: 'rgba(61,53,38,.5)', drawBorder: false },
+          ticks: {
             color: '#7a6d58',
             font: { family: 'Syne Mono, monospace', size: 10 },
             callback: v => `R${v.toFixed(0)}`,
@@ -190,7 +202,7 @@ function buildChart(data, seriesKey) {
 
 // ── Table ─────────────────────────────── //
 function buildTable(data) {
-  const tbody   = document.getElementById('table-body');
+  const tbody = document.getElementById('table-body');
   const current = data[data.length - 1].month;
 
   tbody.innerHTML = [...data].reverse().map(row => `
@@ -243,7 +255,7 @@ function initScrollReveal() {
 
 // ── Gold cursor ────────────────────────── //
 function initCursor() {
-  const dot  = document.getElementById('cursor-dot');
+  const dot = document.getElementById('cursor-dot');
   const ring = document.getElementById('cursor-ring');
   let mx = 0, my = 0, rx = 0, ry = 0;
 
@@ -254,7 +266,7 @@ function initCursor() {
   (function loop() {
     rx += (mx - rx) * .12;
     ry += (my - ry) * .12;
-    dot.style.left  = mx + 'px'; dot.style.top  = my + 'px';
+    dot.style.left = mx + 'px'; dot.style.top = my + 'px';
     ring.style.left = rx + 'px'; ring.style.top = ry + 'px';
     requestAnimationFrame(loop);
   })();
