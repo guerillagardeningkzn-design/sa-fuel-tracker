@@ -2,226 +2,390 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>SA Fuel Price Tracker — MD Works</title>
-  <meta name="description" content="Monthly South African fuel price tracker. 95 ULP, 93 ULP and Diesel — inland and coastal."/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+  <title>SA Incident Tracker • Durban / KZN</title>
+  <meta name="description" content="Community safety reporting for Durban and KZN. Report incidents anonymously — reviewed before going live."/>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' fill='%23110e09'/><text x='16' y='22' text-anchor='middle' font-size='18' fill='%23c9943c' font-family='serif'>✦</text></svg>"/>
-  <link rel="preconnect" href="https://fonts.googleapis.com"/>
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;900&family=Cormorant+Garamond:ital,wght@1,300&family=Raleway:wght@200;300;400;500&family=Syne+Mono&display=swap" rel="stylesheet"/>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
   <link rel="stylesheet" href="style.css"/>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <style>
+    body { display: flex; flex-direction: column; height: 100dvh; overflow: hidden; }
+
+    /* ── Map fills viewport below nav ── */
+    #map {
+      flex: 1;
+      margin-top: var(--nav-h);
+      z-index: 1;
+    }
+
+    /* ── Filter bar ─────────────────── */
+    #filter-bar {
+      position: fixed;
+      top: calc(var(--nav-h) + .75rem);
+      left: 50%; transform: translateX(-50%);
+      z-index: 400;
+      display: flex; gap: .4rem; flex-wrap: wrap; justify-content: center;
+      padding: 0 1rem;
+      max-width: 100vw;
+    }
+    .filter-btn {
+      font-family: 'Syne Mono', monospace;
+      font-size: .55rem; letter-spacing: .1em; text-transform: uppercase;
+      padding: .3rem .7rem;
+      background: rgba(17,14,9,.88); backdrop-filter: blur(8px);
+      border: 1px solid var(--md-border-lt); border-radius: 50px;
+      color: var(--md-muted); cursor: pointer; transition: all .2s;
+      white-space: nowrap;
+    }
+    .filter-btn.active { color: var(--md-gold-lt); border-color: var(--md-gold-dk); }
+    .filter-btn:hover  { color: var(--md-gold-lt); border-color: var(--md-gold-dk); }
+
+    /* ── Filter divider between category + time ── */
+    .filter-divider {
+      width: 1px; height: 20px; align-self: center;
+      background: var(--md-border-lt);
+    }
+
+    /* ── Time filter buttons ─────────── */
+    .time-btn {
+      font-family: 'Syne Mono', monospace;
+      font-size: .55rem; letter-spacing: .1em; text-transform: uppercase;
+      padding: .3rem .7rem;
+      background: rgba(17,14,9,.88); backdrop-filter: blur(8px);
+      border: 1px solid var(--md-border-lt); border-radius: 50px;
+      color: var(--md-muted); cursor: pointer; transition: all .2s;
+      white-space: nowrap;
+    }
+    .time-btn.active { color: var(--md-gold-lt); border-color: var(--md-gold-dk); }
+    .time-btn:hover  { color: var(--md-gold-lt); border-color: var(--md-gold-dk); }
+
+    /* ── Address search bar ──────────── */
+    #search-bar {
+      position: fixed;
+      bottom: 2rem; left: 1.5rem; z-index: 400;
+      display: flex; gap: .4rem; align-items: center;
+      max-width: calc(100vw - 100px);
+    }
+    #search-input {
+      font-family: 'Syne Mono', monospace;
+      font-size: .68rem; letter-spacing: .08em;
+      padding: .55rem 1rem;
+      background: rgba(17,14,9,.92); backdrop-filter: blur(10px);
+      border: 1px solid var(--md-border-lt); border-radius: 50px;
+      color: var(--md-cream);
+      width: 220px; transition: border-color .2s, width .3s;
+      outline: none;
+    }
+    #search-input:focus {
+      border-color: var(--md-gold-dk); width: 280px;
+    }
+    #search-input::placeholder { color: var(--md-muted); }
+    #search-btn {
+      width: 36px; height: 36px; border-radius: 50%;
+      background: rgba(17,14,9,.92); backdrop-filter: blur(10px);
+      border: 1px solid var(--md-border-lt); color: var(--md-muted);
+      cursor: pointer; transition: all .2s;
+      display: flex; align-items: center; justify-content: center;
+      font-size: .9rem; flex-shrink: 0;
+    }
+    #search-btn:hover { border-color: var(--md-gold-dk); color: var(--md-gold-lt); }
+    #search-btn.loading { animation: spin .7s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Search result marker ────────── */
+    .search-pulse {
+      width: 20px; height: 20px; border-radius: 50%;
+      background: rgba(201,148,60,.5);
+      border: 2px solid var(--md-gold);
+      animation: pulse 1.5s ease-out 3;
+    }
+    @keyframes pulse {
+      0%   { transform: scale(1);   opacity: 1; }
+      100% { transform: scale(2.5); opacity: 0; }
+    }
+
+    /* ── Report button (FAB) ─────────── */
+    #fab-report {
+      position: fixed;
+      bottom: 2rem; right: 1.5rem; z-index: 400;
+      width: 56px; height: 56px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--md-gold-dk), var(--md-gold));
+      border: none; cursor: pointer;
+      font-size: 1.4rem; color: var(--md-black);
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 4px 24px rgba(201,148,60,.35);
+      transition: transform .2s, box-shadow .2s;
+    }
+    #fab-report:hover { transform: scale(1.08); box-shadow: 0 6px 32px rgba(201,148,60,.5); }
+
+    /* ── Report panel (slide up) ─────── */
+    #report-panel {
+      position: fixed; bottom: 0; left: 0; right: 0; z-index: 450;
+      background: var(--md-dark);
+      border-top: 1px solid var(--md-border-lt);
+      border-radius: 16px 16px 0 0;
+      padding: 1.5rem 1.5rem 2rem;
+      transform: translateY(100%);
+      transition: transform .35s cubic-bezier(.32,.72,0,1);
+      max-height: 90dvh; overflow-y: auto;
+    }
+    #report-panel.open { transform: translateY(0); }
+
+    .panel-handle {
+      width: 40px; height: 4px; border-radius: 2px;
+      background: var(--md-border-lt);
+      margin: 0 auto 1.25rem;
+    }
+
+    #report-form { display: flex; flex-direction: column; gap: 1rem; }
+
+    /* ── Photo strip ─────────────────── */
+    .photo-strip {
+      display: flex; gap: .75rem; flex-wrap: wrap;
+    }
+    .photo-slot {
+      width: 80px; height: 80px;
+      border: 1px dashed var(--md-border-lt);
+      border-radius: var(--md-radius);
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; transition: border-color .2s;
+      position: relative; overflow: hidden;
+      flex-shrink: 0;
+    }
+    .photo-slot:hover { border-color: var(--md-gold-dk); }
+    .photo-slot img {
+      width: 100%; height: 100%; object-fit: cover;
+      position: absolute; inset: 0;
+    }
+    .photo-slot .slot-label {
+      font-size: .6rem; color: var(--md-muted); text-align: center;
+      line-height: 1.3; padding: .25rem;
+    }
+    .photo-slot input[type="file"] {
+      position: absolute; inset: 0; opacity: 0; cursor: pointer;
+      width: 100%; height: 100%; padding: 0;
+    }
+    .photo-slot .remove-photo {
+      position: absolute; top: 2px; right: 2px; z-index: 2;
+      background: rgba(0,0,0,.7); border: none; border-radius: 50%;
+      width: 18px; height: 18px; cursor: pointer;
+      font-size: .65rem; color: white; display: none;
+      align-items: center; justify-content: center;
+    }
+    .photo-slot.has-image .remove-photo { display: flex; }
+
+    /* ── Coords row ──────────────────── */
+    .coords-row {
+      display: grid; grid-template-columns: 1fr 1fr; gap: .75rem;
+    }
+    .coords-hint {
+      font-family: 'Syne Mono', monospace; font-size: .58rem;
+      color: var(--md-muted); letter-spacing: .06em; margin-top: .2rem;
+    }
+
+    /* ── Map coord picker ────────────── */
+    #map-pick-hint {
+      position: fixed;
+      top: calc(var(--nav-h) + .5rem);
+      left: 50%; transform: translateX(-50%);
+      z-index: 500;
+      background: rgba(17,14,9,.95);
+      border: 1px solid var(--md-gold-dk);
+      border-radius: var(--md-radius);
+      padding: .6rem 1.2rem;
+      font-family: 'Syne Mono', monospace;
+      font-size: .65rem; letter-spacing: .1em; color: var(--md-gold-lt);
+      display: none;
+    }
+
+    /* ── Incident popup ──────────────── */
+    .leaflet-popup-content-wrapper {
+      background: var(--md-panel) !important;
+      border: 1px solid var(--md-border-lt) !important;
+      border-radius: var(--md-radius) !important;
+      box-shadow: 0 8px 32px rgba(0,0,0,.5) !important;
+      color: var(--md-cream) !important;
+    }
+    .leaflet-popup-tip { background: var(--md-panel) !important; }
+    .popup-type {
+      font-family: 'Cinzel', serif; font-size: .8rem;
+      color: var(--md-gold-lt); margin-bottom: .4rem;
+    }
+    .popup-area  { font-size: .8rem; color: var(--md-muted); margin-bottom: .3rem; }
+    .popup-desc  { font-size: .82rem; font-weight: 300; line-height: 1.6; }
+    .popup-time  {
+      font-family: 'Syne Mono', monospace; font-size: .58rem;
+      letter-spacing: .1em; color: var(--md-gold-dk); margin-top: .5rem;
+    }
+    .popup-photos {
+      display: flex; gap: .4rem; margin-top: .5rem; flex-wrap: wrap;
+    }
+    .popup-photos img {
+      width: 60px; height: 60px; object-fit: cover;
+      border-radius: 2px; border: 1px solid var(--md-border);
+      cursor: pointer;
+    }
+
+    /* ── Map coord dialog ────────────── */
+    #coord-dialog {
+      position: fixed; inset: 0; z-index: 600;
+      background: rgba(10,9,6,.85); backdrop-filter: blur(4px);
+      display: flex; align-items: center; justify-content: center;
+      padding: 1.5rem;
+    }
+    .coord-dialog-box {
+      background: var(--md-surface);
+      border: 1px solid var(--md-border-lt);
+      border-radius: var(--md-radius);
+      padding: 1.75rem;
+      width: 100%; max-width: 360px;
+    }
+    .coord-dialog-box h3 {
+      font-size: 1rem; margin-bottom: .5rem;
+    }
+    .coord-dialog-box p {
+      font-size: .82rem; font-weight: 300;
+      color: rgba(240,230,206,.6); margin-bottom: 1.25rem;
+      line-height: 1.6;
+    }
+    .coord-values {
+      font-family: 'Syne Mono', monospace; font-size: .7rem;
+      letter-spacing: .1em; color: var(--md-gold);
+      background: var(--md-panel); border: 1px solid var(--md-border);
+      border-radius: var(--md-radius); padding: .6rem .9rem;
+      margin-bottom: 1.25rem;
+    }
+    .coord-dialog-actions { display: flex; gap: .75rem; }
+  </style>
 </head>
 <body>
 
-  <!-- Grain + glow are in CSS -->
-
-  <!-- Cursor -->
   <div id="cursor-dot"  aria-hidden="true"></div>
   <div id="cursor-ring" aria-hidden="true"></div>
 
   <!-- Nav -->
   <nav class="site-nav">
-    <div class="container nav-inner">
-      <a href="/" class="nav-brand">
-        <span class="ornament">✦</span>
-        <span>MD Works</span>
-      </a>
-      <span class="nav-title">SA Fuel Price Tracker</span>
+    <a href="/" class="nav-brand">
+      <span class="ornament">✦</span> MD Works
+    </a>
+    <span class="nav-title">SA Incident Tracker · Durban / KZN</span>
+    <div class="nav-spacer"></div>
+    <div class="nav-actions">
+      <a href="admin.html" class="btn btn-outline btn-sm">Admin ↗</a>
     </div>
   </nav>
 
-  <!-- Main -->
-  <main class="container">
+  <!-- Map -->
+  <div id="map"></div>
 
-    <!-- Header -->
-    <header class="page-header">
-      <p class="section-label">Project 02 · Live Data Dashboard</p>
-      <h1 class="page-title">
-        <span class="gold-text">SA Fuel</span><br/>
-        <span class="outlined-text">Prices</span>
-      </h1>
-      <p class="page-sub">
-        Monthly retail prices published by the Department of Mineral Resources &amp; Energy.
-        Inland and coastal rates for petrol and diesel.
-      </p>
-      <div class="meta-row">
-        <span class="meta-chip" id="last-updated">Loading...</span>
-        <span class="meta-chip" id="next-review">Next review: 1st Wed of next month</span>
-        <span class="meta-chip" id="data-source-chip">Data: local JSON</span>
+  <!-- Map pick hint -->
+  <div id="map-pick-hint">Tap on the map to set location — then Esc to cancel</div>
+
+  <!-- Filter bar -->
+  <div id="filter-bar">
+    <button class="filter-btn active" data-filter="all">All</button>
+    <button class="filter-btn" data-filter="Security">Security</button>
+    <button class="filter-btn" data-filter="Emergency">Emergency</button>
+    <button class="filter-btn" data-filter="Infrastructure">Infrastructure</button>
+    <button class="filter-btn" data-filter="Animals">Animals</button>
+    <button class="filter-btn" data-filter="Civil">Civil</button>
+    <div class="filter-divider"></div>
+    <button class="time-btn" data-time="today">Today</button>
+    <button class="time-btn" data-time="week">7 Days</button>
+    <button class="time-btn" data-time="month">30 Days</button>
+    <button class="time-btn active" data-time="all">All Time</button>
+  </div>
+
+  <!-- FAB -->
+  <button id="fab-report" title="Report an incident" aria-label="Report an incident">＋</button>
+
+  <!-- Address search -->
+  <div id="search-bar">
+    <input type="text" id="search-input" placeholder="Search address…" autocomplete="off"/>
+    <button id="search-btn" title="Search" aria-label="Search address">🔍</button>
+  </div>
+
+  <!-- Report panel -->
+  <div id="report-panel" role="dialog" aria-modal="true" aria-label="Report an incident">
+    <div class="panel-handle"></div>
+
+    <p class="section-label">Report an Incident</p>
+    <p style="font-size:.82rem;font-weight:300;color:rgba(240,230,206,.55);margin-bottom:1rem;line-height:1.6">
+      Anonymous · Your report waits for moderator review before appearing on the map.
+    </p>
+
+    <form id="report-form" novalidate>
+
+      <!-- Type -->
+      <div class="form-group">
+        <label for="inc-type">Incident Type *</label>
+        <div class="type-select-wrap">
+          <span class="type-icon" id="type-icon">📌</span>
+          <select id="inc-type" required>
+            <option value="">— Select type —</option>
+          </select>
+        </div>
       </div>
-    </header>
 
-    <!-- Loading state -->
-    <div id="loading" class="loading-state">
-      <div class="spinner"></div>
-      <p>Fetching prices…</p>
-    </div>
+      <!-- Area -->
+      <div class="form-group">
+        <label for="inc-area">Area / Suburb / Landmark *</label>
+        <input type="text" id="inc-area" placeholder="e.g. Bluff, Westville, N2 near..." required/>
+      </div>
 
-    <!-- Error state -->
-    <div id="error" class="error-state hidden">
-      <span class="error-icon">⚠</span>
-      <p id="error-msg">Could not load data.</p>
-    </div>
+      <!-- Description -->
+      <div class="form-group">
+        <label for="inc-desc">What did you see / hear? *</label>
+        <textarea id="inc-desc" placeholder="Brief description of the incident…" required></textarea>
+      </div>
 
-    <!-- Dashboard (hidden until loaded) -->
-    <div id="dashboard" class="hidden">
-
-      <!-- Current price cards -->
-      <section class="cards-section">
-        <p class="section-label reveal">Current Prices · <span id="current-month-label">—</span></p>
-        <div class="price-grid">
-
-          <div class="price-card card reveal" data-fuel="p95i">
-            <div class="fuel-header">
-              <div>
-                <div class="fuel-grade">95 ULP</div>
-                <div class="fuel-region">Inland</div>
-              </div>
-              <div class="fuel-icon">⛽</div>
-            </div>
-            <div class="fuel-price" id="price-p95i">—</div>
-            <div class="fuel-change" id="change-p95i"></div>
-            <div class="fuel-note">per litre · incl. levies &amp; taxes</div>
-          </div>
-
-          <div class="price-card card reveal" data-fuel="p95c">
-            <div class="fuel-header">
-              <div>
-                <div class="fuel-grade">95 ULP</div>
-                <div class="fuel-region">Coastal</div>
-              </div>
-              <div class="fuel-icon">⛽</div>
-            </div>
-            <div class="fuel-price" id="price-p95c">—</div>
-            <div class="fuel-change" id="change-p95c"></div>
-            <div class="fuel-note">per litre · incl. levies &amp; taxes</div>
-          </div>
-
-          <div class="price-card card reveal" data-fuel="p93i">
-            <div class="fuel-header">
-              <div>
-                <div class="fuel-grade">93 ULP</div>
-                <div class="fuel-region">Inland only</div>
-              </div>
-              <div class="fuel-icon">⛽</div>
-            </div>
-            <div class="fuel-price" id="price-p93i">—</div>
-            <div class="fuel-change" id="change-p93i"></div>
-            <div class="fuel-note">per litre · incl. levies &amp; taxes</div>
-          </div>
-
-          <div class="price-card card reveal" data-fuel="d005i">
-            <div class="fuel-header">
-              <div>
-                <div class="fuel-grade">Diesel 0.05%</div>
-                <div class="fuel-region">Inland</div>
-              </div>
-              <div class="fuel-icon">🚛</div>
-            </div>
-            <div class="fuel-price" id="price-d005i">—</div>
-            <div class="fuel-change" id="change-d005i"></div>
-            <div class="fuel-note">per litre · 0.05% sulphur</div>
-          </div>
-
-          <div class="price-card card reveal" data-fuel="d005c">
-            <div class="fuel-header">
-              <div>
-                <div class="fuel-grade">Diesel 0.05%</div>
-                <div class="fuel-region">Coastal</div>
-              </div>
-              <div class="fuel-icon">🚛</div>
-            </div>
-            <div class="fuel-price" id="price-d005c">—</div>
-            <div class="fuel-change" id="change-d005c"></div>
-            <div class="fuel-note">per litre · 0.05% sulphur</div>
-          </div>
-
+      <!-- Coordinates -->
+      <div class="form-group">
+        <label>Location (optional)</label>
+        <div class="coords-row">
+          <input type="number" id="inc-lat" placeholder="Latitude" step="any"/>
+          <input type="number" id="inc-lng" placeholder="Longitude" step="any"/>
         </div>
-      </section>
-
-      <div class="full-divider"></div>
-
-      <!-- Chart -->
-      <section class="chart-section reveal">
-        <div class="chart-header">
-          <p class="section-label">12-Month History</p>
-          <div class="chart-toggle" role="group" aria-label="Select fuel type">
-            <button class="toggle-btn active" data-series="p95i">95 Inland</button>
-            <button class="toggle-btn" data-series="p95c">95 Coastal</button>
-            <button class="toggle-btn" data-series="p93i">93 Inland</button>
-            <button class="toggle-btn" data-series="d005i">Diesel Inland</button>
-          </div>
-        </div>
-        <div class="chart-wrap card">
-          <canvas id="priceChart" height="320"></canvas>
-        </div>
-        <p class="chart-caption">
-          Price per litre in ZAR · Source: DMRE monthly gazette
+        <p class="coords-hint">
+          <button type="button" id="pick-on-map" class="btn btn-outline btn-sm" style="margin-top:.4rem">
+            📍 Pick on map
+          </button>
         </p>
-      </section>
-
-      <div class="full-divider"></div>
-
-      <!-- History table -->
-      <section class="table-section reveal">
-        <p class="section-label">Full Price History</p>
-        <div class="table-wrap card">
-          <table id="price-table">
-            <thead>
-              <tr>
-                <th>Month</th>
-                <th>95 Inland</th>
-                <th>95 Coastal</th>
-                <th>93 Inland</th>
-                <th>Diesel Inland</th>
-                <th>Diesel Coastal</th>
-              </tr>
-            </thead>
-            <tbody id="table-body"></tbody>
-          </table>
-        </div>
-      </section>
-
-    </div><!-- /dashboard -->
-
-    <!-- Google Sheets info panel -->
-    <section class="sheets-panel card reveal">
-      <div class="sheets-inner">
-        <div class="sheets-text">
-          <p class="section-label" style="margin-bottom:.75rem">Live Data via Google Sheets</p>
-          <h3 class="sheets-title">Connect your own Sheet</h3>
-          <p>
-            Replace the local JSON with a published Google Sheet CSV and this dashboard
-            updates live whenever you edit the sheet — no redeploy needed.
-          </p>
-          <p>
-            See <code>README.md</code> for the exact column format and how to get your
-            Sheet's public CSV URL.
-          </p>
-        </div>
-        <div class="sheets-code">
-          <div class="code-label mono">main.js · line 8</div>
-          <pre><code><span class="c">// Option A: local JSON (default)</span>
-const DATA_URL = './data/prices.json';
-
-<span class="c">// Option B: Google Sheet (published CSV)</span>
-<span class="c">// const DATA_URL = 'https://docs.google.com/spreadsheets/</span>
-<span class="c">//   d/YOUR_SHEET_ID/export?format=csv';</span></code></pre>
-        </div>
       </div>
-    </section>
 
-  </main>
+      <!-- Photos -->
+      <div class="form-group">
+        <label>Photos (optional · up to 3)</label>
+        <div class="photo-strip" id="photo-strip"></div>
+      </div>
 
-  <!-- Footer -->
-  <footer class="site-footer">
-    <div class="full-divider"></div>
-    <div class="footer-inner">
-      <div class="footer-brand">✦ &nbsp; MD Works &nbsp; ✦</div>
-      <div class="footer-sub">Morney Deetlefs · Project 02 — Live Data Dashboard · SA Fuel Price Tracker</div>
+      <!-- Submit -->
+      <button type="submit" class="btn btn-gold" id="submit-btn">
+        Submit for Review
+      </button>
+
+      <p id="form-error" class="danger hidden" style="font-size:.8rem;margin-top:.25rem"></p>
+
+    </form>
+  </div>
+
+  <!-- Coord dialog -->
+  <div id="coord-dialog" class="hidden">
+    <div class="coord-dialog-box">
+      <h3>Use this location?</h3>
+      <p>Coordinates selected on map:</p>
+      <div class="coord-values" id="coord-display">—</div>
+      <div class="coord-dialog-actions">
+        <button class="btn btn-outline" id="coord-cancel">Cancel</button>
+        <button class="btn btn-gold"    id="coord-confirm">Use Location</button>
+      </div>
     </div>
-  </footer>
+  </div>
 
-  <script src="main.js"></script>
+  <div id="toast"></div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/map.js"></script>
 </body>
 </html>
