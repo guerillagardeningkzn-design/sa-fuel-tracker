@@ -144,7 +144,7 @@
       <!-- Chart -->
       <section class="chart-section reveal">
         <div class="chart-header">
-          <p class="section-label">12-Month History</p>
+          <p class="section-label">Price History</p>
           <div class="chart-toggle" role="group" aria-label="Select fuel type">
             <button class="toggle-btn active" data-series="p95i">95 Inland</button>
             <button class="toggle-btn" data-series="p95c">95 Coastal</button>
@@ -154,6 +154,11 @@
         </div>
         <div class="chart-wrap card">
           <canvas id="priceChart" height="320"></canvas>
+        </div>
+        <div class="chart-nav">
+          <button class="chart-nav-btn" id="chart-prev" title="Older">← Older</button>
+          <span id="chart-range" class="chart-range">—</span>
+          <button class="chart-nav-btn" id="chart-next" title="Newer" disabled>Newer →</button>
         </div>
         <p class="chart-caption">
           Price per litre in ZAR · Source: DMRE monthly gazette
@@ -184,7 +189,8 @@
 
     </div><!-- /dashboard -->
 
-   
+    <!-- Google Sheets info panel -->
+    
 
   </main>
 
