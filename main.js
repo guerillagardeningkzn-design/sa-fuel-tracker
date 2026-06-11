@@ -5,14 +5,14 @@
 
    DATA SOURCE
    ───────────
-   Live from the SA Fuel Price API (Project 04)
-   https://sa-fuel-api-production.up.railway.app
+   Live from the SA Fuel Price API v2 (Project 05)
+   https://sa-fuel-api.guerillagardeningkzn.workers.dev
 
    To update prices monthly, use the admin page:
-   /admin.html
+   /admin.html — or call the API directly with your API key
 ══════════════════════════════════════════ */
 
-const DATA_URL = 'https://sa-fuel-api-production.up.railway.app/v1/prices?limit=36';
+const DATA_URL = 'https://sa-fuel-api.guerillagardeningkzn.workers.dev/v1/prices?limit=36';
 const IS_CSV   = false;
 
 // ── Column keys ───────────────────────── //
@@ -38,8 +38,8 @@ function normalizeApiRow(row) {
     p95i:  row.prices.petrol.p95Inland,
     p95c:  row.prices.petrol.p95Coastal,
     p93i:  row.prices.petrol.p93Inland,
-    d005i: row.prices.diesel.d005Inland,
-    d005c: row.prices.diesel.d005Coastal,
+    d005i: row.prices.diesel.d500Inland,   // 500ppm — standard grade
+    d005c: row.prices.diesel.d500Coastal,
   };
 }
 

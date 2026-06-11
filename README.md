@@ -1,6 +1,6 @@
 # ✦ SA Fuel Price Tracker
 
-**MD Works · Project 02 — Live Data Dashboard**  
+**MD Works · Project 02 — Live Data Dashboard**
 Vanilla JS · Chart.js · Google Sheets (optional) · Cloudflare Pages
 
 Tracks monthly South African fuel retail prices published by the Department of
@@ -79,7 +79,7 @@ Row 1 must be the exact headers above. Copy the data from `prices.json` to get s
 
 **Step 2 — Publish the Sheet**
 
-File → Share → Publish to web → Select the sheet → CSV → Publish  
+File → Share → Publish to web → Select the sheet → CSV → Publish
 Copy the URL (looks like `https://docs.google.com/spreadsheets/d/.../pub?...&output=csv`)
 
 **Step 3 — Update `main.js`**
@@ -135,4 +135,4 @@ git push
 
 ---
 
-✦ MD Works · Morney Deetlefs · [Portfolio →](https://your-domain.com)
+✦ MD Works · Morney Deetlefs · [Portfolio →](https://md-works-portfolio.guerillagardeningkzn.workers.dev/)
