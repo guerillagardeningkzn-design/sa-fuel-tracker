@@ -12,7 +12,7 @@
    /admin.html — or call the API directly with your API key
 ══════════════════════════════════════════ */
 
-const DATA_URL = 'https://sa-fuel-api.guerillagardeningkzn.workers.dev/v1/prices?limit=36';
+const DATA_URL = 'https://sa-fuel-api.guerillagardeningkzn.workers.dev/v1/';
 const IS_CSV   = false;
 
 // ── Column keys ───────────────────────── //
