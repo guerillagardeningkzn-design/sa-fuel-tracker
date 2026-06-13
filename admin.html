@@ -249,7 +249,7 @@
       <p class="section-label">Developer Tools</p>
       <h1>Price Editor</h1>
       <p style="font-size:.9rem;font-weight:300;color:rgba(240,230,206,.55);margin-bottom:2rem">
-        Add a new month or correct an existing one. Data writes directly to the Railway API.
+        Add a new month or correct an existing one. Data writes directly to the Workers API.
       </p>
 
       <!-- Mode toggle -->
@@ -289,15 +289,23 @@
           </div>
         </div>
 
-        <div class="price-group-title">Diesel 0.05%</div>
+        <div class="price-group-title">Diesel</div>
         <div class="form-grid">
           <div class="form-group">
-            <label for="add-d005i">Diesel Inland (R/L) *</label>
-            <input type="number" id="add-d005i" step="0.01" placeholder="0.00"/>
+            <label for="add-d500i">Diesel 500ppm Inland (R/L) *</label>
+            <input type="number" id="add-d500i" step="0.01" placeholder="0.00"/>
           </div>
           <div class="form-group">
-            <label for="add-d005c">Diesel Coastal (R/L) *</label>
-            <input type="number" id="add-d005c" step="0.01" placeholder="0.00"/>
+            <label for="add-d500c">Diesel 500ppm Coastal (R/L) *</label>
+            <input type="number" id="add-d500c" step="0.01" placeholder="0.00"/>
+          </div>
+          <div class="form-group">
+            <label for="add-d50i">Diesel 50ppm Inland (R/L) *</label>
+            <input type="number" id="add-d50i" step="0.01" placeholder="0.00"/>
+          </div>
+          <div class="form-group">
+            <label for="add-d50c">Diesel 50ppm Coastal (R/L) *</label>
+            <input type="number" id="add-d50c" step="0.01" placeholder="0.00"/>
           </div>
         </div>
 
@@ -337,15 +345,23 @@
           </div>
         </div>
 
-        <div class="price-group-title">Diesel 0.05%</div>
+        <div class="price-group-title">Diesel</div>
         <div class="form-grid">
           <div class="form-group">
-            <label for="edit-d005i">Diesel Inland (R/L)</label>
-            <input type="number" id="edit-d005i" step="0.01" placeholder="Leave blank to keep"/>
+            <label for="edit-d500i">Diesel 500ppm Inland (R/L)</label>
+            <input type="number" id="edit-d500i" step="0.01" placeholder="Leave blank to keep"/>
           </div>
           <div class="form-group">
-            <label for="edit-d005c">Diesel Coastal (R/L)</label>
-            <input type="number" id="edit-d005c" step="0.01" placeholder="Leave blank to keep"/>
+            <label for="edit-d500c">Diesel 500ppm Coastal (R/L)</label>
+            <input type="number" id="edit-d500c" step="0.01" placeholder="Leave blank to keep"/>
+          </div>
+          <div class="form-group">
+            <label for="edit-d50i">Diesel 50ppm Inland (R/L)</label>
+            <input type="number" id="edit-d50i" step="0.01" placeholder="Leave blank to keep"/>
+          </div>
+          <div class="form-group">
+            <label for="edit-d50c">Diesel 50ppm Coastal (R/L)</label>
+            <input type="number" id="edit-d50c" step="0.01" placeholder="Leave blank to keep"/>
           </div>
         </div>
 
@@ -371,12 +387,14 @@
                 <th>95 Inland</th>
                 <th>95 Coastal</th>
                 <th>93 Inland</th>
-                <th>Diesel Inland</th>
-                <th>Diesel Coastal</th>
+                <th>D500 Inland</th>
+                <th>D500 Coastal</th>
+                <th>D50 Inland</th>
+                <th>D50 Coastal</th>
               </tr>
             </thead>
             <tbody id="current-tbody">
-              <tr><td colspan="6" style="text-align:center;color:var(--muted);padding:2rem">Loading…</td></tr>
+              <tr><td colspan="8" style="text-align:center;color:var(--muted);padding:2rem">Loading…</td></tr>
             </tbody>
           </table>
         </div>
@@ -414,7 +432,7 @@
 
       // Test the key with a dummy PUT that will 404 but not 403
       try {
-        const res  = await fetch(`${API_BASE}/v1/prices/0000-00`, {
+        const res  = await fetch(`${API_BASE}/v1/prices/0001-01`, {
           method:  'PUT',
           headers: { 'Authorization': `Bearer ${key}` },
           body:    JSON.stringify({ p95i: 0 }),
@@ -460,12 +478,14 @@
       const p95i  = parseFloat(document.getElementById('add-p95i').value);
       const p95c  = parseFloat(document.getElementById('add-p95c').value);
       const p93i  = parseFloat(document.getElementById('add-p93i').value);
-      const d005i = parseFloat(document.getElementById('add-d005i').value);
-      const d005c = parseFloat(document.getElementById('add-d005c').value);
+      const d500i = parseFloat(document.getElementById('add-d500i').value);
+      const d500c = parseFloat(document.getElementById('add-d500c').value);
+      const d50i  = parseFloat(document.getElementById('add-d50i').value);
+      const d50c  = parseFloat(document.getElementById('add-d50c').value);
 
       const resultEl = document.getElementById('result-add');
 
-      if (!month || !monthLabel || isNaN(p95i) || isNaN(p95c) || isNaN(p93i) || isNaN(d005i) || isNaN(d005c)) {
+      if (!month || !monthLabel || isNaN(p95i) || isNaN(p95c) || isNaN(p93i) || isNaN(d500i) || isNaN(d500c) || isNaN(d50i) || isNaN(d50c)) {
         return showResult(resultEl, 'error', 'All fields are required.');
       }
 
@@ -476,7 +496,7 @@
         const res  = await fetch(`${API_BASE}/v1/prices`, {
           method:  'POST',
           headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-          body:    JSON.stringify({ month, monthLabel, p95i, p95c, p93i, d005i, d005c }),
+          body:    JSON.stringify({ month, monthLabel, p95i, p95c, p93i, d500i, d500c, d50i, d50c }),
         });
         const data = await res.json();
 
@@ -502,7 +522,7 @@
       if (!month) return showResult(resultEl, 'error', 'Select a month first.');
 
       const body = {};
-      const fields = { p95i: 'edit-p95i', p95c: 'edit-p95c', p93i: 'edit-p93i', d005i: 'edit-d005i', d005c: 'edit-d005c' };
+      const fields = { p95i: 'edit-p95i', p95c: 'edit-p95c', p93i: 'edit-p93i', d500i: 'edit-d500i', d500c: 'edit-d500c', d50i: 'edit-d50i', d50c: 'edit-d50c' };
       for (const [key, id] of Object.entries(fields)) {
         const val = parseFloat(document.getElementById(id).value);
         if (!isNaN(val)) body[key] = val;
@@ -548,16 +568,22 @@
         if (!last6.length) {
           tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:2rem">No data yet.</td></tr>';
         } else {
-          tbody.innerHTML = last6.map(r => `
+          tbody.innerHTML = last6.map(r => {
+            const p = r.prices?.petrol  ?? {};
+            const d = r.prices?.diesel  ?? {};
+            const fmt = v => (typeof v === 'number' ? `R ${v.toFixed(2)}` : '—');
+            return `
             <tr>
-              <td>${r.monthLabel}</td>
-              <td>R ${r.prices.petrol.p95Inland.toFixed(2)}</td>
-              <td>R ${r.prices.petrol.p95Coastal.toFixed(2)}</td>
-              <td>R ${r.prices.petrol.p93Inland.toFixed(2)}</td>
-              <td>R ${r.prices.diesel.d005Inland.toFixed(2)}</td>
-              <td>R ${r.prices.diesel.d005Coastal.toFixed(2)}</td>
-            </tr>
-          `).join('');
+              <td>${r.monthLabel ?? r.month}</td>
+              <td>${fmt(p.p95Inland)}</td>
+              <td>${fmt(p.p95Coastal)}</td>
+              <td>${fmt(p.p93Inland)}</td>
+              <td>${fmt(d.d500Inland)}</td>
+              <td>${fmt(d.d500Coastal)}</td>
+              <td>${fmt(d.d50Inland)}</td>
+              <td>${fmt(d.d50Coastal)}</td>
+            </tr>`;
+          }).join('');
         }
 
         // Populate edit dropdown
@@ -586,8 +612,8 @@
 
     function clearForm(mode) {
       const ids = mode === 'add'
-        ? ['add-month','add-label','add-p95i','add-p95c','add-p93i','add-d005i','add-d005c']
-        : ['edit-p95i','edit-p95c','edit-p93i','edit-d005i','edit-d005c'];
+        ? ['add-month','add-label','add-p95i','add-p95c','add-p93i','add-d500i','add-d500c','add-d50i','add-d50c']
+        : ['edit-p95i','edit-p95c','edit-p93i','edit-d500i','edit-d500c','edit-d50i','edit-d50c'];
       ids.forEach(id => document.getElementById(id).value = '');
       if (mode === 'edit') document.getElementById('edit-month').value = '';
     }
